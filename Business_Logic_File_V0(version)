@@ -1,0 +1,90 @@
+1. Login and Identity Check
+Only people from trusted government or police departments can log in.
+
+They use their email, password, and sometimes an OTP (code) for extra safety.
+
+We make sure the email belongs to a valid organization (like @cybercrime.gov.in).
+
+2. Role-Based Access
+Every user has a specific role:
+
+Admin – Can see everything, including passwords.
+
+Forensic Analyst – Can upload and view files, but not see the password.
+
+Observer – Can only view reports and logs.
+
+This keeps everything secure and legal.
+
+3. Uploading the Locked File
+The user uploads a password-protected file (like a ZIP, PDF, DOCX, etc.).
+
+The system checks what type of file it is.
+
+4. Trying to Unlock the File
+Based on the file type, we pick the right tool:
+
+fcrackzip for ZIP files
+
+pdfcrack for PDFs
+
+John the Ripper for many types
+
+msoffcrypto for Word/Excel files
+
+The system then tries to guess the password using:
+
+A list of common passwords
+
+Trying every possible password (brute-force)
+
+AI that predicts possible passwords based on file name or user details
+
+5. Viewing the Decrypted File
+If the password is found:
+
+The system opens the file safely inside the browser.
+
+Admins can download or export the file.
+
+Others can only view the content inside a protected viewer.
+
+This keeps the password safe and prevents misuse.
+
+6. Activity Tracking and Report Generation
+Every action is recorded:
+
+Who uploaded what
+
+What was cracked
+
+When and how it was viewed
+
+A report is automatically created, showing:
+
+File details
+
+Cracking method
+
+Password found (if allowed)
+
+Time and date
+
+These reports help in court or internal investigations.
+
+7. Using AI to Help Crack Passwords
+If AI is turned on:
+
+The system uses clues from the file name or user info to guess smart passwords.
+
+These guesses are tried first, saving time.
+
+8. Safety Features
+Files are deleted after use or timeout.
+
+All passwords are encrypted before saving.
+
+Repeated failed logins or suspicious behavior will block the user.
+
+Every step is tracked with IP address and time.
+
