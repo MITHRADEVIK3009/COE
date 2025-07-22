@@ -1,0 +1,155 @@
+# File Cracking & Decryption Pipeline - State Hierarchy Overview
+
+This document defines the state-driven architecture for a secure file upload and password recovery system, outlining all major states, sub-states, entry/exit triggers, and owner modules.
+
+## Top-Level Lifecycle (Summary Flow)
+
+UNAUTHENTICATED → AUTH_PENDING_VERIFICATION → AUTHORIZED → FILE_UPLOADED → FILE_TYPE_DETECTED → CRACKING_IN_PROGRESS → {PASSWORD_FOUND | PASSWORD_NOT_FOUND} → FILE_DECRYPTED → REPORT_GENERATED
+
+Interrupt States: SESSION_EXPIRED, MISUSE_DETECTED
+
+---
+
+## 1. UNAUTHENTICATED
+
+| Sub-State             | Code           | When Entered         | Entry Action      | Exit Conditions           | Owner      |
+|----------------------|----------------|-----------------------|-------------------|---------------------------|------------|
+| Login Form Displayed | LOGIN_UI       | User visits app       | Render login form | Submit credentials        | Frontend   |
+| Credentials Submitted| LOGIN_SUBMIT   | User posts login form | Validate input    | Valid → AUTH_INIT, else → LOGIN_UI | Auth API |
+| Rate Limited          | LOGIN_RATE_LIMIT | Too many attempts | Show cooldown     | Timer ends → LOGIN_UI     | Security   |
+
+---
+
+## 2. AUTH_PENDING_VERIFICATION
+
+| Sub-State             | Code                | When Entered     | Entry Action         | Exit Conditions                     | Owner         |
+|----------------------|---------------------|------------------|----------------------|-------------------------------------|---------------|
+| Token Issued         | AUTH_TOKEN_UNVERIFIED | Creds valid    | Create temp JWT      | Domain check complete               | Auth API      |
+| Domain Check         | AUTH_DOMAIN_CHECK   | Token issued     | Verify org domain    | Pass → AUTH_ROLE_RESOLVE, Fail → logout | Auth Service |
+| MFA Challenge        | AUTH_MFA_PENDING    | Org requires 2FA | Send OTP/email push  | Success → next; Fail → retry/lock   | Auth + Notif  |
+
+---
+
+## 3. AUTHORIZED
+
+| Sub-State             | Code              | When Entered      | Entry Action            | Exit Conditions                         | Owner       |
+|----------------------|-------------------|-------------------|-------------------------|-----------------------------------------|-------------|
+| Role Resolved        | ROLE_BOUND        | Auth validated    | Attach roles to JWT     | Go to dashboard                         | Auth        |
+| Session Active       | SESSION_ACTIVE    | Dashboard loaded  | Start idle timer        | Idle timeout → SESSION_EXPIRED          | Session Mgr |
+| Policy Banner        | LEGAL_ACK_PENDING | First login / update | Show policy terms    | Accept → Continue; Decline → Logout     | Compliance  |
+
+---
+
+## 4. FILE_UPLOADED
+
+| Sub-State             | Code             | When Entered      | Entry Action        | Exit Conditions                  | Owner       |
+|----------------------|------------------|-------------------|---------------------|----------------------------------|-------------|
+| Upload Started       | UPLOAD_START     | File selected     | Begin streaming     | Next chunk / cancel              | Frontend    |
+| Upload In Progress   | UPLOAD_STREAMING | Streaming data    | Temp store          | Complete → UPLOAD_VALIDATE       | Upload Svc  |
+| Upload Validate      | UPLOAD_VALIDATE  | File received     | Check size/hash     | Pass → UPLOAD_STORED; else → err| Security    |
+| Upload Stored        | UPLOAD_STORED    | Safe file         | Encrypt & queue     | Next: FILE_TYPE_DETECTED         | Storage Svc |
+
+---
+
+## 5. FILE_TYPE_DETECTED
+
+| Sub-State         | Code              | When Entered     | Entry Action     | Exit Conditions                         | Owner         |
+|------------------|-------------------|------------------|------------------|-----------------------------------------|---------------|
+| Magic Inspect     | FTYPE_MAGIC_SCAN  | File stored      | Read header      | Known → FTYPE_SUPPORTED; else → FTYPE_UNSUPPORTED | File Inspector |
+| Supported Type    | FTYPE_SUPPORTED   | Type identified  | Queue cracking   | Move to cracking pipeline               | Orchestrator  |
+| Unsupported Type  | FTYPE_UNSUPPORTED | Unknown format   | Notify user      | User deletes or downloads               | Upload Svc    |
+
+---
+
+## 6. CRACKING_IN_PROGRESS
+
+| Stage             | Code             | Description                 | Key Data            | Exit On                    | Owner     |
+|------------------|------------------|-----------------------------|----------------------|----------------------------|-----------|
+| Job Queued        | CRACK_QUEUED     | Added to queue              | job_id, file_id      | Worker picks it up         | Queue Svc |
+| Env Prep          | CRACK_ENV_PREP   | Prep tool/workspace         | container_id         | Success → next             | Worker    |
+| Dictionary Prep   | CRACK_DICT_PREP  | Load wordlists              | wordlist_path        | Ready → CRACK_DICT_RUN     | Worker    |
+| Dictionary Run    | CRACK_DICT_RUN   | Try known passwords         | status %, last tried | Pass → PASSWORD_FOUND      | Tool      |
+| AI Guess Prep     | CRACK_AI_PREP    | Metadata extraction         | meta tokens          | → CRACK_AI_GEN             | AI Svc    |
+| AI Guess Generate | CRACK_AI_GEN     | Predicts password guesses   | candidate list       | → CRACK_AI_TEST            | AI Svc    |
+| AI Guess Test     | CRACK_AI_TEST    | Test AI guesses             | pass/fail            | Hit → found; else → brute  | Tool      |
+| Brute Config      | CRACK_BRUTE_PREP | Set masks/charset           | config               | → CRACK_BRUTE_RUN          | Worker    |
+| Brute Run         | CRACK_BRUTE_RUN  | Exhaustive search           | progress %           | Hit → found; else → not    | Tool      |
+| Interrupted       | CRACK_PAUSED     | User pause/quota            | saved state          | Resume or cancel           | Worker    |
+| Error             | CRACK_ERROR      | Cracker failed              | error msg            | Retry/fail                 | Worker    |
+
+---
+
+## 7. PASSWORD_FOUND
+
+| Sub-State        | Code           | When Entered         | Entry Action        | Exit Conditions                    | Owner    |
+|------------------|----------------|-----------------------|---------------------|------------------------------------|----------|
+| Raw Hit          | PW_RAW_HIT     | Password returned     | Capture plaintext   | Encrypt and store                  | Worker   |
+| Password Stored  | PW_SECURE_STORE| After hit             | AES encrypt         | Notify orchestrator                | Security |
+| Decrypt Test     | PW_VERIFY      | Password stored       | Decrypt with pwd    | Success → FILE_DECRYPTED_READY     | Worker   |
+
+---
+
+## 8. PASSWORD_NOT_FOUND
+
+| Sub-State      | Code              | When Entered      | Entry Action       | Exit Conditions                    | Owner      |
+|----------------|-------------------|-------------------|--------------------|------------------------------------|------------|
+| Exhausted      | CRACK_EXHAUSTED   | All methods fail  | Log failure        | Notify user                        | Orchestrator |
+| User Options   | CRACK_RETRY_OPTIONS | After exhausted | Show UI for retry  | Upload new wordlist, reconfigure   | Frontend   |
+| Closed         | CRACK_CLOSED      | User ends job     | Archive logs       | Final state                        | Case Mgmt  |
+
+---
+
+## 9. FILE_DECRYPTED
+
+| Sub-State      | Code              | When Entered      | Entry Action       | Exit Conditions                | Owner          |
+|----------------|-------------------|-------------------|--------------------|-------------------------------|----------------|
+| Decrypt In Mem | DEC_INMEM         | After password    | Open file          | → Viewer Prep                 | Decrypt Svc    |
+| Render Prep    | VIEW_ASSET_PREP   | File opened       | Convert for viewer | → VIEW_READY                  | Conversion Svc |
+| Viewer Ready   | VIEW_READY        | Viewer initialized| Serve UI           | Close when session ends       | Viewer         |
+| Export Request | VIEW_EXPORT_REQ   | Admin clicked     | Confirm compliance | → EXPORT_GEN / back           | Viewer         |
+| Export Generated | EXPORT_GEN      | Export approved   | Create package     | User downloads or revokes     | Storage Svc    |
+
+---
+
+## 10. REPORT_GENERATED
+
+| Sub-State     | Code          | When Entered      | Entry Action     | Exit Conditions              | Owner     |
+|---------------|---------------|-------------------|------------------|------------------------------|-----------|
+| Collect Logs  | RPT_GATHER    | After decryption  | Fetch logs       | → Render report              | Reporting |
+| Build Report  | RPT_RENDER    | Logs ready        | Generate PDF     | → Store                      | Reporting |
+| Report Stored | RPT_STORED    | Report complete   | Save to storage  | Notify user                  | Reporting |
+| Report Viewed | RPT_VIEWED    | User opens report | Log event        | Done                         | Frontend  |
+
+---
+
+## 11. SESSION_EXPIRED
+
+| Sub-State        | Code             | Trigger         | Action              | Owner         |
+|------------------|------------------|------------------|---------------------|---------------|
+| Idle Timeout     | SESSION_IDLE     | No activity      | Invalidate token    | Session Mgmt  |
+| Forced Logout    | SESSION_FORCE    | Admin triggered  | Kill session        | Security      |
+| Cleanup          | SESSION_CLEANUP  | After logout     | Remove temp, detach | Orchestrator  |
+
+---
+
+## 12. MISUSE_DETECTED
+
+| Sub-State           | Code               | Trigger                  | Action                     | Owner      |
+|---------------------|--------------------|---------------------------|----------------------------|------------|
+| Suspicious Login    | MISUSE_LOGIN       | Geo/IP anomaly            | Trigger 2FA recheck        | Security   |
+| Crack Abuse         | MISUSE_CRACK_RATE  | Excess brute jobs         | Throttle or alert admin    | Security   |
+| Unauthorized Export | MISUSE_EXPORT      | User violates export rule | Block export, log          | Security   |
+| Account Lock        | MISUSE_LOCK        | Repeated violations       | Disable account            | Admin Ops  |
+
+---
+
+## Recommended Status Code Format (API / DB)
+
+```json
+{
+  "status": "CRACK_DICT_RUN",
+  "progress": 42,
+  "eta_seconds": 3600,
+  "role": "ANALYST",
+  "actions_allowed": ["pause", "cancel"]
+}
