@@ -1,0 +1,99 @@
+1. UNAUTHENTICATED
+The user has not logged in yet.
+
+No access to any feature
+
+Shows login page
+
+Awaiting email, password, and optional OTP
+
+2. AUTHENTICATED_PENDING_VERIFICATION
+User has logged in, but domain/org check is pending.
+
+System checks if the user is from an approved agency (e.g., @gov.in)
+
+Shows a verification loading screen or confirmation
+
+3. AUTHORIZED
+User is verified and successfully logged in.
+
+System assigns a role (Admin, Analyst, Observer)
+
+User is taken to the dashboard
+
+4. FILE_UPLOADED
+The user has uploaded a locked/encrypted file.
+
+File metadata is extracted
+
+File type detection begins
+
+File is stored temporarily or encrypted
+
+5. FILE_TYPE_DETECTED
+System confirms what kind of file was uploaded.
+
+Examples: ZIP, PDF, DOCX, XLSX, RAR
+
+Used to pick the right cracking tool
+
+6. CRACKING_IN_PROGRESS
+The system is actively trying to unlock the file.
+
+Dictionary attack or brute force begins
+
+AI predictions (if enabled) are being used
+
+Progress bar or log updates shown to user
+
+7. PASSWORD_FOUND
+The correct password has been discovered.
+
+Password is stored securely
+
+File is decrypted for viewing
+
+System moves to viewing phase
+
+8. PASSWORD_NOT_FOUND
+The cracking failed (e.g., exhausted all possibilities).
+
+Shows failure message
+
+Logs the attempt for reporting
+
+Offers retry with different dictionary or AI settings
+
+9. FILE_DECRYPTED
+File has been successfully opened.
+
+Decrypted file is rendered in secure viewer
+
+Viewer is limited by role (read-only for Analyst, export only for Admin)
+
+Logs viewer access
+
+10. REPORT_GENERATED
+System creates a full report of what happened.
+
+Includes time taken, user role, methods used, outcome
+
+PDF report saved to logs or sent to admin
+
+11. SESSION_EXPIRED
+User is inactive or timeout occurred.
+
+Files auto-deleted
+
+User must re-login or re-upload
+
+Used for legal compliance and security
+
+12. MISUSE_DETECTED
+Suspicious activity triggered a security block.
+
+Multiple failed attempts
+
+Repeated exports or login failures
+
+User is auto-blocked, and admin is notified
