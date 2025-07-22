@@ -1,0 +1,56 @@
+Digital Forensic Password Recovery for Law Enforcement
+THE REAL-WORLD PROBLEM 
+As more and more dealings in the current digital world require encryption, criminals are also using encrypted files to hide sensitive or illegal information like digital evidence, financial transactions, contraband media, or clandestine communications. As law enforcement agencies conduct investigations, they will often seize files protected by a password. However, this presents a challenge: 
+Without the password, they cannot access files, and common decryption methods fail to be sufficiently fast, efficient or scalable.  
+
+THE LEGAL DILEMMA 
+Even when law enforcement has permission to access data via search warrant or court order, investigators must still comply with rigid legal and ethical guidelines: 
+Hacking is illegal. 
+Forensic protocols must preserve the chain of custody and admissibility of evidence in court. 
+If investigators mishandle decrypted passwords or files in any way, the integrity of the investigation may be compromised.  
+
+WHY THIS SOLUTION IS NEEDED 
+Manual password cracking is not only slow, it's not efficient, nor scalable. 
+Existing tools like fcrackzip and John the Ripper are mostly CLI-based and are not accessible to non-technical users. 
+A single platform does not exist which can incorporate features like AI-based password guessing, strict roles for access, log all activities for compliance, and allow secure viewing of files, all in one.
+
+How This Initiative Bridges the Divide
+
+This initiative establishes a secure, AI-supported, web-enabled platform specifically aimed at the digital forensic professional and law enforcement.  It provides, among other functionalities:
+
+
+Secure upload and handling of password protected files.
+
+
+AI augmented methods of cracking password protected files through dictionary, brute-force, and guessing by using metadata knowledge.
+
+
+Role-based access controls, only those authorized by the user can see or export a file that was cracked.
+
+
+Secure viewing space to view decrypted files without exposing the password.
+
+
+Automated logging and reports for the purposes of transparency, accountability, and admissibility purposes.
+
+
+Ethical Use and Safety Procedures
+
+Unlike generic/less ethical cracking platforms, this application has built-in safety measures:
+
+
+Access is only permitted for verified domain authenticated users from law enforcement or forensics agencies.
+
+
+Passwords are not made available to analysts unless consented by an administrator.
+
+
+Logs show what all users are doing, i.e., files accessed and files decrypted.
+
+
+Machine learning models are only used for offline file accounts; machine learning will never be used for on-line credential guessing against a system or account.
+
+
+Origins and Inspirations
+
+The inspiration for this service was based on actual digital forensic scenarios and examinations where the investigation was hindered or completed because evidence was encrypted files which could not be accessed legally or timely. 
